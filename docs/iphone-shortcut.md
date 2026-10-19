@@ -1,0 +1,71 @@
+# "Save to Offline Reader" — iPhone Share sheet shortcut
+
+This puts **Save to Offline Reader** in the Share sheet of Safari, Arc, Mail, Files and most other apps. It works for web links (including links to PDFs) and for PDF files such as email attachments.
+
+You build it once in the **Shortcuts** app. It then syncs to your other Apple devices through iCloud.
+
+## Before you start
+
+You need a GitHub token. You can reuse the one you created for the app, or make a new one the same way: go to [github.com/settings/personal-access-tokens/new](https://github.com/settings/personal-access-tokens/new), choose **Only select repositories** → `offline-reader-library`, and set **Contents** to **Read and write**.
+
+## Build it
+
+Open **Shortcuts** → **+** (new shortcut). Rename it **Save to Offline Reader** (tap the name at the top).
+
+Tap the **ⓘ** (details) button → turn on **Show in Share Sheet** → Done. A **Receive … input from Share Sheet** block appears at the top. Tap the input types it lists and keep only **URLs**, **Safari web pages**, **PDFs** and **Files**. Then set **If there's no input** to **Get Clipboard**.
+
+Add these actions in order. Search for each by name in the action search bar.
+
+1. **Text** — paste your GitHub token into it.
+2. **Set Variable** — name it `Token`. The input is the Text above.
+3. **Format Date** — date: **Current Date**, format: **Custom**, format string: `yyyyMMdd'T'HHmmss`.
+4. **Set Variable** — name it `Stamp`.
+5. **Get Details of Files** — detail: **File Extension**, of: **Shortcut Input**.
+6. **If** — *File Extension* **is** `pdf`.
+
+   **Inside the If (PDFs):**
+
+   7. **Base64 Encode** — input: **Shortcut Input**, Line Breaks: **None** (tap *Show More*).
+   8. **Get Name** — of **Shortcut Input**.
+   9. **URL Encode** — input: **Name**.
+   10. **Get Contents of URL**
+       - URL: `https://api.github.com/repos/rayman239/offline-reader-library/contents/queue/` then insert variable **Stamp**, type `--`, insert **URL Encoded Text**, type `.pdf`
+       - Method: **PUT**
+       - Headers: `Authorization` = `Bearer ` followed by the **Token** variable · `Accept` = `application/vnd.github+json`
+       - Request Body: **JSON** · `message` (Text) = `Save PDF` · `content` (Text) = **Base64 Encoded**
+
+   **Otherwise (links):**
+
+   11. **Get URLs from Input** — input: **Shortcut Input**.
+   12. **Get Item from List** — **First Item** of **URLs**.
+   13. **Text** — type `{"url":"`, insert **Item from List**, type `"}`
+   14. **Base64 Encode** — input: the Text above, Line Breaks: **None**.
+   15. **Get Contents of URL**
+       - URL: `https://api.github.com/repos/rayman239/offline-reader-library/contents/queue/` then **Stamp**, then `.json`
+       - Method: **PUT**
+       - Headers: same two as step 10
+       - Request Body: **JSON** · `message` = `Save link` · `content` = **Base64 Encoded**
+
+   **End If**
+
+16. **Get Dictionary Value** — key `commit` in **If Result**.
+17. **If** — *Dictionary Value* **has any value**
+    - **Show Notification** — `Saved to Offline Reader`
+    - **Otherwise:** **Show Notification** — `Couldn't save — check the token` (insert **If Result** to see GitHub's message)
+    - **End If**
+
+## Use it
+
+Share any page, link or PDF → **Save to Offline Reader**. The item shows up in the app as *Processing…* and becomes readable after about a minute for articles, or a few minutes for PDFs.
+
+> **If it fails:** the most common causes are a token that has expired or lacks *Contents: Read and write*, and Base64 line breaks left on. Line breaks must be set to **None**.
+
+## On a Mac
+
+The same shortcut appears on your Mac through iCloud. In Arc, the easiest ways to save a page are:
+
+- **Copy the address and paste it anywhere in the Offline Reader page** (⌘L, ⌘C, switch to the app, ⌘V). A save box opens with the link filled in.
+- Or use this bookmarklet. Create a bookmark or pinned link with this as its URL:
+  ```
+  javascript:location.href='https://rayman239.github.io/offline-reader/?add='+encodeURIComponent(location.href)
+  ```

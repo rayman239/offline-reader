@@ -89,7 +89,7 @@ export async function processing() {
   }
   for (const p of remote || []) {
     const name = p.replace(/^queue\//, '');
-    out.push({ label: name.endsWith('.pdf') ? name.replace(/^[^-]+-[^-]+--/, '') : 'Link', detail: 'Processing…' });
+    out.push({ label: name.endsWith('.pdf') ? name.replace(/^[\dT]+(-\w{4})?--/, '') : 'Link', detail: 'Processing…' });
   }
   return out;
 }
