@@ -284,6 +284,8 @@ textarea.field { min-height: 84px; resize: vertical; line-height: 1.45; font-fam
 .theme-doc .content blockquote + p { font-family: var(--mono); font-size: 12px; color: var(--muted); }
 .theme-doc .content blockquote + p a { color: var(--muted); }
 .theme-doc .content strong { font-weight: 700; }
+.theme-doc .content blockquote + p { margin-bottom: 0.6em; }
+.theme-doc .content blockquote:not(:first-child) { margin-top: 2.4em; }
 
 /* ---------- settings / setup ---------- */
 

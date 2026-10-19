@@ -265,10 +265,7 @@ export function buildEntry({ quote, item, thought, clipId, date = new Date() }) 
   const q = quote.split(/\n+/).map(l => l.trim()).filter(Boolean).map(l => `> ${l}`).join('\n>\n');
   const title = item.title.replace(/([*_[\]\\])/g, '\\$1');
   let s = `${q}\n\n— *${title}* · [source](<${sourceLink(item)}>) · ${longDate(date)}\n`;
-  if (thought) {
-    const [first, ...rest] = thought.split('\n');
-    s += `**Thought:** ${first}\n${rest.length ? rest.join('\n') + '\n' : ''}`;
-  }
+  if (thought) s += `\n**Thought:** ${thought}\n`;
   s += `%% clip:${clipId} %%\n`;
   return s;
 }
