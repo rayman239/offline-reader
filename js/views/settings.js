@@ -50,8 +50,9 @@ export function setupView(root) {
       config.owner = owner;
       config.token = token;
       if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
-      location.hash = '#/';
-      sync({ force: true });
+      // Restart the app connected (setting the hash alone does nothing if it's already #/).
+      history.replaceState(null, '', location.pathname + '#/');
+      location.reload();
     } catch (e) {
       err.textContent = e.status === 401 ? 'GitHub didn’t accept that key.'
         : e.status === 404 ? `Couldn’t find ${owner}/${LIBRARY} and ${VAULT} with that key. Check the repository access.`

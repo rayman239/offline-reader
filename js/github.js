@@ -42,13 +42,18 @@ export class GitHub {
     };
     if (etag) headers['If-None-Match'] = etag;
     if (body !== undefined) headers['Content-Type'] = 'application/json';
+    // Never hang: give up after 60s (uploads can be large) and treat it as a network problem.
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 60000);
     let res;
     try {
       res = await fetch(path.startsWith('http') ? path : API + path, {
-        method, headers, body: body === undefined ? undefined : JSON.stringify(body), cache: 'no-store',
+        method, headers, body: body === undefined ? undefined : JSON.stringify(body), cache: 'no-store', signal: ctrl.signal,
       });
     } catch (e) {
-      throw new GitHubError('Network unavailable', 0, { offline: true });
+      throw new GitHubError(e.name === 'AbortError' ? 'GitHub took too long to respond' : 'Network unavailable', 0, { offline: true });
+    } finally {
+      clearTimeout(timer);
     }
     if (res.status === 304) return { notModified: true, etag };
     if (!res.ok) {
