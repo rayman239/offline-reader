@@ -136,13 +136,13 @@ export function libraryView(root, { tab }) {
 }
 
 function itemRow(i) {
-  const meta = [
-    `<span>${esc(i.site || hostOf(i.source))}</span>`,
-    i.type === 'pdf' ? '<span>PDF</span>' : '',
-    i.words ? `<span>${readingTime(i.words)}</span>` : '',
-    `<span>${shortDate(i.saved)}</span>`,
-    ...i.tags.map(t => `<span class="t">${esc(t)}</span>`),
-  ].join('');
+  const facts = [
+    i.site || hostOf(i.source),
+    i.type === 'pdf' ? 'PDF' : '',
+    i.words ? readingTime(i.words) : '',
+    shortDate(i.saved),
+  ].filter(Boolean).join(', ');
+  const meta = `<span>${esc(facts)}</span>` + i.tags.map(t => `<span class="t">${esc(t)}</span>`).join('');
   return `<li><a class="row" href="#/read/${encodeURIComponent(i.id)}"><div class="title">${esc(i.title)}</div><div class="meta">${meta}</div></a></li>`;
 }
 

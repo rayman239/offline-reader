@@ -16,6 +16,39 @@ export function parseFrontmatter(text) {
   return { meta, body: text.slice(m[0].length) };
 }
 
+// Removes the publication's name from a page title. Kept identical to cleanTitle()
+// in the library processor (processor/common.mjs), which applies it to new saves;
+// here it also tidies items saved before that existed.
+export function cleanTitle(title, site, url) {
+  const norm = s => (s || '').toLowerCase().replace(/^the\s+/, '').replace(/[^a-z0-9]/g, '');
+  // "en.wikipedia.org" → "wikipedia", "worksinprogress.co" → "worksinprogress"
+  const root = h => {
+    const labels = h.replace(/^www\./, '').split('.');
+    return labels.length > 1 ? labels.slice(0, -1).sort((a, b) => b.length - a.length)[0] : labels[0];
+  };
+  let host = '';
+  try { host = root(new URL(url).hostname); } catch { /* no url */ }
+  const siteName = /^[\w-]+(\.[\w-]+)+$/.test(site || '') ? root(site) : site;
+  const names = [norm(siteName), norm(host)].filter(n => n.length >= 4);
+  if (!names.length || !title) return title;
+  // A segment is the publication's name if it matches exactly, or differs only by a word
+  // like "Magazine" or "News" ("Works in Progress Magazine" vs "worksinprogress").
+  const EXTRA = /^(magazine|mag|news|blog|online|daily|weekly|review|journal|newsletter|com|co|org|net|io)?$/;
+  const isName = seg => {
+    const n = norm(seg);
+    if (n.length < 3) return false;
+    return names.some(x => (n.startsWith(x) && EXTRA.test(n.slice(x.length)))
+      || (x.startsWith(n) && EXTRA.test(x.slice(n.length))));
+  };
+  const SEP = '\\s+[|\\-–—·•»]\\s+';
+  let t = title.trim();
+  const tail = new RegExp(`^(.*\\S)${SEP}([^|–—·•»]+)$`).exec(t);
+  if (tail && isName(tail[2])) t = tail[1].trim();
+  const head = new RegExp(`^([^|–—·•»:]+?)(?:${SEP}|:\\s+)(.+)$`).exec(t);
+  if (head && isName(head[1]) && head[2].trim().length > 10) t = head[2].trim();
+  return t || title;
+}
+
 export const themeName = file => file.replace(/\.md$/, '');
 export const themeFile = name => `${name}.md`;
 export function cleanThemeName(name) {
@@ -55,7 +88,8 @@ export async function loadItems() {
       else highlights = applyHighlightOp(highlights, op);
     }
     const tags = [...new Set(highlights.flatMap(h => h.themes || []))].sort();
-    return { ...item, status, highlights, tags };
+    const title = item.type === 'pdf' ? item.title : cleanTitle(item.title, item.site, item.source);
+    return { ...item, title, status, highlights, tags };
   });
   items.sort((a, b) => String(b.saved).localeCompare(String(a.saved)));
   return items;

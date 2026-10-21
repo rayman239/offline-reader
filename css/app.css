@@ -8,18 +8,19 @@
 @font-face { font-family: 'Mono'; src: url('../fonts/iAWriterMonoS-Bold.woff2') format('woff2'); font-weight: 700; font-display: swap; }
 
 :root {
-  --bg: #fbfbf9;
-  --fg: #1d1d1b;
-  --muted: #8b8b86;
-  --faint: #c9c9c3;
-  --line: #e9e9e4;
-  --panel: #ffffff;
+  /* Light mode uses Instapaper's sepia palette. */
+  --bg: #f8f2e3;
+  --fg: #3b3832;
+  --muted: #989383;
+  --faint: #c8c2b3;
+  --line: #e8e2d3;
+  --panel: #fbf7ec;
   --accent: #1a9fe0;
   --accent-fg: #ffffff;
   --mark: rgba(26, 159, 224, 0.18);
   --mark-line: rgba(26, 159, 224, 0.55);
   --danger: #c4442f;
-  --shadow: 0 10px 40px rgba(0, 0, 0, 0.12);
+  --shadow: 0 10px 40px rgba(38, 37, 35, 0.16);
   --serif: 'Quattro', 'iA Writer Quattro S', ui-serif, Georgia, serif;
   --mono: 'Mono', 'iA Writer Mono S', ui-monospace, Menlo, monospace;
   --measure: 36rem;
