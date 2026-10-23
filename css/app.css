@@ -249,7 +249,8 @@ mark.hl { background: var(--mark); color: inherit; border-bottom: 1.5px solid va
 .viewer-close {
   position: absolute; top: calc(var(--top) + 10px); right: 12px;
   width: 40px; height: 40px; border-radius: 50%;
-  background: rgba(255, 255, 255, 0.14); color: #fff; font: 400 24px/40px var(--mono); text-align: center;
+  background: rgba(20, 20, 19, 0.72); color: #fff; font: 400 24px/40px var(--mono); text-align: center;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.18); z-index: 1;
 }
 .viewer-caption {
   position: absolute; left: 0; right: 0; bottom: 0;
