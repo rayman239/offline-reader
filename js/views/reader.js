@@ -4,6 +4,7 @@ import { renderArticle, attachImages, releaseImages } from '../render.js';
 import { describe, paint } from '../highlight.js';
 import { enqueue } from '../outbox.js';
 import { kv } from '../db.js';
+import { openViewer } from '../viewer.js';
 import { config } from '../config.js';
 import { on } from '../events.js';
 import { esc, el, icons, sheet, toast, confirmSheet, readingTime, longDate, uid } from '../ui.js';
@@ -160,8 +161,12 @@ export function readerView(root, { id, back = '#/' }) {
     clipSheet(item, anchor, () => load(false));
   });
 
-  // Tapping a highlight shows what it was clipped to.
+  // Tapping a highlight shows what it was clipped to; tapping an image opens it full screen.
   content.addEventListener('click', e => {
+    if (e.target.tagName === 'IMG' && e.target.src && !selectionInContent()) {
+      openViewer(e.target.src, e.target.alt);
+      return;
+    }
     const m = e.target.closest('mark.hl');
     if (!m || selectionInContent()) return;
     const hl = item && item.highlights.find(h => h.id === m.dataset.id);
@@ -333,6 +338,7 @@ export function pagesView(root, { id }) {
     </div>`);
   root.replaceChildren(page);
   const wrap = page.querySelector('.pages');
+  wrap.addEventListener('click', e => { if (e.target.tagName === 'IMG' && e.target.src) openViewer(e.target.src); });
   const urls = [];
   (async () => {
     const n = await pageCount(id);

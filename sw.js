@@ -1,6 +1,6 @@
 // Service worker: caches the app itself so it opens with no connection.
 // Content (articles, images) lives in IndexedDB, not here.
-const VERSION = 'v3';
+const VERSION = 'v4';
 const CACHE = `offline-reader-${VERSION}`;
 const SHELL = [
   './',
@@ -8,7 +8,7 @@ const SHELL = [
   'manifest.webmanifest',
   'css/app.css',
   'js/main.js', 'js/config.js', 'js/db.js', 'js/events.js', 'js/github.js', 'js/highlight.js',
-  'js/library.js', 'js/outbox.js', 'js/render.js', 'js/sync.js', 'js/ui.js',
+  'js/library.js', 'js/outbox.js', 'js/render.js', 'js/sync.js', 'js/ui.js', 'js/viewer.js',
   'js/views/library.js', 'js/views/reader.js', 'js/views/settings.js', 'js/views/themes.js',
   'vendor/marked.esm.js', 'vendor/purify.es.mjs',
   'fonts/iAWriterQuattroS-Regular.woff2', 'fonts/iAWriterQuattroS-Italic.woff2',

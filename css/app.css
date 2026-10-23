@@ -228,6 +228,39 @@ mark.hl { background: var(--mark); color: inherit; border-bottom: 1.5px solid va
 }
 .clip-fab.show { transform: translate(-50%, 0); opacity: 1; pointer-events: auto; }
 
+/* Images open full screen when tapped */
+.content img[src], .pages img[src] { cursor: zoom-in; }
+.viewer {
+  --fade: 1;
+  position: fixed; inset: 0; z-index: 70;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(12, 12, 11, calc(0.96 * var(--fade)));
+  opacity: 0; transition: opacity 0.2s ease;
+  touch-action: none; overscroll-behavior: contain; user-select: none; -webkit-user-select: none;
+  padding: calc(var(--top) + 8px) 0 calc(var(--bottom) + 8px);
+}
+.viewer.show { opacity: 1; }
+.viewer-img {
+  max-width: 100vw; max-height: 100%; object-fit: contain;
+  transform-origin: 0 0; will-change: transform; background: #fff; border-radius: 0;
+  -webkit-touch-callout: none; cursor: zoom-in;
+}
+.viewer.zoomed .viewer-img { cursor: grab; }
+.viewer-close {
+  position: absolute; top: calc(var(--top) + 10px); right: 12px;
+  width: 40px; height: 40px; border-radius: 50%;
+  background: rgba(255, 255, 255, 0.14); color: #fff; font: 400 24px/40px var(--mono); text-align: center;
+}
+.viewer-caption {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  padding: 24px var(--gutter) calc(var(--bottom) + 16px);
+  font-family: var(--mono); font-size: 12px; line-height: 1.5; color: rgba(255, 255, 255, 0.75);
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.6));
+  transition: opacity 0.2s ease; pointer-events: none;
+}
+.viewer.zoomed .viewer-caption { opacity: 0; }
+html.viewer-open, html.viewer-open body { overflow: hidden; }
+
 /* PDF pages */
 .pages img { display: block; width: 100%; height: auto; margin: 0 0 6px; background: #fff; box-shadow: 0 0 0 1px var(--line); }
 .pages .pn { font-family: var(--mono); font-size: 11px; color: var(--muted); text-align: center; margin: 4px 0 20px; }
