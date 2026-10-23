@@ -144,7 +144,9 @@ export function openViewer(src, alt = '') {
     if (d.moved) { clamp(); apply(true); return; }
 
     // A tap.
-    const onImage = e.target === img;
+    // Hit-test by position: with pointer capture, e.target is always the viewer itself.
+    const r = img.getBoundingClientRect();
+    const onImage = e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
     if (e.pointerType === 'mouse') {
       if (!onImage && s === 1) { close(); return; }
       zoomAt(e.clientX, e.clientY, s > 1 ? 1 : DOUBLE_TAP_ZOOM, true);

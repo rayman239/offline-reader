@@ -1,6 +1,6 @@
 // Service worker: caches the app itself so it opens with no connection.
 // Content (articles, images) lives in IndexedDB, not here.
-const VERSION = 'v5';
+const VERSION = 'v6';
 const CACHE = `offline-reader-${VERSION}`;
 const SHELL = [
   './',
