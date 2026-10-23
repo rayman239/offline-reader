@@ -84,7 +84,7 @@ export function openViewer(src, alt = '') {
   root.addEventListener('pointerdown', e => {
     if (e.target.closest('.viewer-close')) return;
     if (!base) measure();
-    root.setPointerCapture(e.pointerId);
+    try { root.setPointerCapture(e.pointerId); } catch { /* pointer already gone */ }
     pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (pts.size === 2) {
       const m = mid();
