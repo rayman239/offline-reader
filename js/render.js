@@ -6,8 +6,12 @@ import { itemBlob } from './library.js';
 marked.use({ gfm: true, breaks: false });
 
 export function mdToHtml(md) {
-  // Obsidian comments (%% … %%) are hidden, as in Obsidian's reading view.
-  const html = marked.parse(md.replace(/%%[\s\S]*?%%/g, ''));
+  const cleaned = md
+    // Obsidian comments (%% … %%) are hidden, as in Obsidian's reading view.
+    .replace(/%%[\s\S]*?%%/g, '')
+    // An indented image line would render as a code block; some sites' HTML produces these.
+    .replace(/^[ \t]+(!\[[^\]\n]*\]\([^)\n]*\))[ \t]*$/gm, '$1');
+  const html = marked.parse(cleaned);
   return DOMPurify.sanitize(html, { ADD_TAGS: ['small'], FORBID_ATTR: ['style'] });
 }
 
