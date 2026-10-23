@@ -2,6 +2,7 @@
 import { marked } from '../vendor/marked.esm.js';
 import DOMPurify from '../vendor/purify.es.mjs';
 import { itemBlob } from './library.js';
+import { webImageSrc } from './webimages.js';
 
 marked.use({ gfm: true, breaks: false });
 
@@ -50,16 +51,53 @@ export async function renderArticle(el, item) {
 export async function attachImages(el, id, onlyPending = false) {
   for (const img of el.querySelectorAll(onlyPending ? 'img.pending' : 'img[data-src]')) {
     const rel = img.dataset.src;
-    if (!rel || /^(https?:|data:)/.test(rel)) continue;
+    if (!rel || rel.startsWith('data:')) continue;
     img.decoding = 'async';
+    if (/^https?:/.test(rel)) {
+      // Kept as a web link by the library; this device stores its own copy.
+      const found = await webImageSrc(rel);
+      if (found) {
+        if (found.blob) urls.add(found.src);
+        img.referrerPolicy = 'no-referrer';
+        img.onerror = () => placeholder(img, 'This image couldn’t be loaded — view it on the original page', rel);
+        img.onload = () => clearPlaceholder(img);
+        img.src = found.src;
+        img.classList.remove('pending');
+      } else {
+        img.classList.add('pending');
+        placeholder(img, 'Image not on this device yet — it downloads next time you’re online', rel);
+      }
+      continue;
+    }
     const blob = await itemBlob(id, rel);
     if (blob) {
       const u = URL.createObjectURL(blob);
       urls.add(u);
       img.src = u;
       img.classList.remove('pending');
+      clearPlaceholder(img);
     } else {
       img.classList.add('pending'); // still downloading; filled in on 'images-updated'
+      placeholder(img, navigator.onLine ? 'Downloading image…' : 'Image not on this device yet — it downloads next time you’re online');
     }
   }
+}
+
+// A visible note in place of an image that isn't available, so nothing goes missing silently.
+function placeholder(img, text, href) {
+  let ph = img.nextElementSibling && img.nextElementSibling.classList.contains('img-ph') ? img.nextElementSibling : null;
+  if (!ph) {
+    ph = document.createElement(href ? 'a' : 'div');
+    ph.className = 'img-ph';
+    img.after(ph);
+  }
+  ph.textContent = img.alt ? `${img.alt} — ${text}` : text;
+  if (href) { ph.href = href; ph.target = '_blank'; ph.rel = 'noopener noreferrer'; }
+  img.classList.add('img-hidden');
+}
+
+function clearPlaceholder(img) {
+  const ph = img.nextElementSibling;
+  if (ph && ph.classList.contains('img-ph')) ph.remove();
+  img.classList.remove('img-hidden');
 }

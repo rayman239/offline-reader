@@ -3,8 +3,9 @@
 // so an interrupted sync simply resumes next time.
 import { db, kv, fileKey } from './db.js';
 import { gh, config, LIBRARY, VAULT } from './config.js';
-import { flush } from './outbox.js';
+import { flush, parseJson } from './outbox.js';
 import { emit } from './events.js';
+import { saveWebImage, webImageUrls } from './webimages.js';
 
 const TEXT_RE = /\.(md|json|txt)$/i;
 const TEXT_BATCH = 40;
@@ -66,6 +67,7 @@ async function run({ force = false } = {}) {
     setStatus({ total: todo.length });
     if (removed) emit('synced', { partial: true });
     await download(todo);
+    await saveWebImages();
     await flush();
     const now = Date.now();
     await kv.set('lastSync', now);
@@ -107,6 +109,42 @@ async function plan(repo, want, force) {
   if (stale.length) await db.delFiles(stale);
   const todo = wanted.filter(e => local.get(e.path) !== e.sha);
   return { repo, todo, removed: stale.length > 0 };
+}
+
+// Downloads, on this device, the images the library kept as web links (see webimages.js).
+async function saveWebImages() {
+  const idx = parseJson((await db.get('files', fileKey(LIBRARY, 'index.json')))?.text, { items: [] });
+  const ids = idx.items.filter(i => i.remoteImages > 0).map(i => i.id);
+  if (!ids.length) return;
+  const recs = await db.getMany('files', ids.map(id => fileKey(LIBRARY, `items/${id}/article.md`)));
+  const urls = [...new Set(recs.filter(Boolean).flatMap(r => webImageUrls(r.text)))];
+  let saved = 0;
+  for (const u of urls) if (await saveWebImage(u)) saved++;
+  if (saved) emit('images-updated');
+}
+
+// Opening an article while online fetches its images straight away, ahead of the rest of the sync.
+export async function fetchItemNow(id) {
+  if (!navigator.onLine || !config.configured) return;
+  const list = (await kv.get(`list:${LIBRARY}`)) || [];
+  const have = await db.shasByRepo(LIBRARY);
+  const prefix = `items/${id}/`;
+  const todo = list.filter(e => e.path.startsWith(prefix) && !TEXT_RE.test(e.path)
+    && !e.path.endsWith('/original.pdf') && have.get(e.path) !== e.sha);
+  let next = 0;
+  const worker = async () => {
+    while (next < todo.length) {
+      const e = todo[next++];
+      try {
+        const blob = await gh().blobRaw(LIBRARY, e.sha);
+        await db.putFiles([{ key: fileKey(LIBRARY, e.path), repo: LIBRARY, path: e.path, sha: e.sha, blob }]);
+      } catch { /* the regular sync will retry */ }
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(4, todo.length) }, worker));
+  const f = await db.get('files', fileKey(LIBRARY, `${prefix}article.md`));
+  for (const u of webImageUrls(f && f.text)) await saveWebImage(u);
+  emit('images-updated');
 }
 
 // Records a file as present locally (used by sync and by the outbox after a write).

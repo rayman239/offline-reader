@@ -1,6 +1,8 @@
 // Service worker: caches the app itself so it opens with no connection.
-// Content (articles, images) lives in IndexedDB, not here.
-const VERSION = 'v7';
+// Content (articles, images) lives in IndexedDB, not here — except images the library kept
+// as web links, which are cached in WEB_CACHE and served from there (see js/webimages.js).
+const VERSION = 'v8';
+const WEB_CACHE = 'offline-reader-web-images';
 const CACHE = `offline-reader-${VERSION}`;
 const SHELL = [
   './',
@@ -8,7 +10,7 @@ const SHELL = [
   'manifest.webmanifest',
   'css/app.css',
   'js/main.js', 'js/config.js', 'js/db.js', 'js/events.js', 'js/github.js', 'js/highlight.js',
-  'js/library.js', 'js/outbox.js', 'js/render.js', 'js/sync.js', 'js/ui.js', 'js/viewer.js',
+  'js/library.js', 'js/outbox.js', 'js/render.js', 'js/sync.js', 'js/ui.js', 'js/viewer.js', 'js/webimages.js',
   'js/views/library.js', 'js/views/reader.js', 'js/views/settings.js', 'js/views/themes.js',
   'vendor/marked.esm.js', 'vendor/purify.es.mjs',
   'fonts/iAWriterQuattroS-Regular.woff2', 'fonts/iAWriterQuattroS-Italic.woff2',
@@ -23,7 +25,7 @@ self.addEventListener('install', e => {
 
 self.addEventListener('activate', e => {
   e.waitUntil((async () => {
-    for (const k of await caches.keys()) if (k !== CACHE) await caches.delete(k);
+    for (const k of await caches.keys()) if (k !== CACHE && k !== WEB_CACHE) await caches.delete(k);
     await self.clients.claim();
   })());
 });
@@ -31,7 +33,11 @@ self.addEventListener('activate', e => {
 // Network-first for the app shell (so updates arrive), falling back to the cache offline.
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
-  if (e.request.method !== 'GET' || url.origin !== location.origin) return;
+  if (e.request.method !== 'GET') return;
+  if (url.origin !== location.origin) {
+    if (e.request.destination === 'image') e.respondWith(webImage(e.request));
+    return;
+  }
   e.respondWith((async () => {
     const cache = await caches.open(CACHE);
     const isNav = e.request.mode === 'navigate';
@@ -49,3 +55,17 @@ self.addEventListener('fetch', e => {
     }
   })());
 });
+
+// Images from other sites: cache-first, so anything shown once (or prefetched by sync) works offline.
+async function webImage(request) {
+  const cache = await caches.open(WEB_CACHE);
+  const hit = await cache.match(request.url);
+  if (hit) return hit;
+  try {
+    const res = await fetch(request.url, { mode: 'no-cors', credentials: 'omit', referrerPolicy: 'no-referrer' });
+    if (res.type === 'opaque' || res.ok) cache.put(request.url, res.clone());
+    return res;
+  } catch {
+    return Response.error();
+  }
+}

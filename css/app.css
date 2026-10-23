@@ -186,6 +186,12 @@ button { background: none; border: 0; padding: 0; cursor: pointer; }
 .content a:hover { text-decoration-color: var(--fg); }
 .content img { display: block; max-width: 100%; height: auto; margin: 1.5em auto; border-radius: 3px; background: var(--line); }
 .content img.pending { min-height: 120px; width: 100%; }
+.content img.img-hidden { display: none; }
+.img-ph {
+  display: block; margin: 1.5em 0; padding: 22px 18px; border: 1px dashed var(--faint); border-radius: 4px;
+  font-family: var(--mono); font-size: 12px; line-height: 1.5; color: var(--muted); text-align: center; text-decoration: none;
+}
+a.img-ph:hover { color: var(--fg); border-color: var(--muted); }
 .content p > img:only-child { margin: 1.5em auto; }
 .content img + em, .content p:has(> img:only-child) + p > em:only-child, .content figcaption {
   display: block; font-family: var(--mono); font-style: normal; font-size: 12px; color: var(--muted); margin-top: -0.6em; line-height: 1.5;

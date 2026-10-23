@@ -5,6 +5,7 @@ import { describe, paint } from '../highlight.js';
 import { enqueue } from '../outbox.js';
 import { kv } from '../db.js';
 import { openViewer } from '../viewer.js';
+import { fetchItemNow } from '../sync.js';
 import { config } from '../config.js';
 import { on } from '../events.js';
 import { esc, el, icons, sheet, toast, confirmSheet, readingTime, longDate, uid } from '../ui.js';
@@ -76,6 +77,7 @@ export function readerView(root, { id, back = '#/' }) {
     if (bodyChanged) {
       await renderArticle(content, item);
       if (first) restorePosition();
+      if (content.querySelector('img.pending')) fetchItemNow(item.id);
     }
     paint(content, item.highlights);
   }
