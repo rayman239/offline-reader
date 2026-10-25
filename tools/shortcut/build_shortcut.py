@@ -105,9 +105,16 @@ def put(url_text, message, content_action):
 
 # ---------- the shortcut ----------
 
-IS, HAS_ANY_VALUE = 4, 100
+IS, HAS_ANY_VALUE, HAS_NO_VALUE = 4, 100, 101
 
 token = action("gettext", WFTextActionText=text("PASTE-YOUR-TOKEN"))
+# Only ever use what was shared — never the clipboard (which may hold anything, e.g. this token).
+g0 = uid()
+if_empty = cond_start(g0, INPUT, HAS_NO_VALUE)
+empty_note = action("notification", WFNotificationActionTitle="Offline Reader",
+                    WFNotificationActionBody=text("Nothing was shared. Use Share → Save to Offline Reader on a page or PDF."))
+stop = action("exit")
+empty_end = cond_end(g0)
 set_token = action("setvariable", WFVariableName="Token", WFInput=attach(out(token, "Text")))
 stamp = action("format.date", WFDateFormatStyle="Custom", WFDateFormat="yyyyMMdd'T'HHmmss",
                WFDate=text({"Type": "CurrentDate"}))
@@ -146,7 +153,7 @@ bad_note = action("notification", WFNotificationActionTitle="Offline Reader — 
                                                 ". Check the token in this shortcut."))
 ok_end = cond_end(g2)
 
-actions = [token, set_token, stamp, set_stamp, ext,
+actions = [token, if_empty, empty_note, stop, empty_end, set_token, stamp, set_stamp, ext,
            if_pdf, pdf_b64, pdf_name, pdf_name_enc, pdf_put,
            otherwise, links, shared, body, link_b64, link_put, end_if,
            commit, err, ok_if, ok_note, ok_else, bad_note, ok_end]
@@ -162,7 +169,6 @@ shortcut = {
         "WFGenericFileContentItem", "WFStringContentItem",
     ],
     "WFWorkflowHasShortcutInputVariables": True,
-    "WFWorkflowNoInputBehavior": {"Name": "WFWorkflowNoInputBehaviorGetClipboard", "Parameters": {}},
     "WFWorkflowImportQuestions": [{
         "ActionIndex": 0,
         "Category": "Parameter",
