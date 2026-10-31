@@ -6,6 +6,7 @@ import { sync, status as syncStatus } from '../sync.js';
 import { pending } from '../outbox.js';
 import { on } from '../events.js';
 import { esc, el, icons, toast, confirmSheet, ago } from '../ui.js';
+import { THEMES, getTheme, setTheme } from '../theme.js';
 
 const TOKEN_URL = 'https://github.com/settings/personal-access-tokens/new';
 
@@ -70,6 +71,11 @@ export function settingsView(root) {
         <a class="icon-btn" href="#/" aria-label="Back">${icons.back}</a>
       </header>
       <h1>Settings</h1>
+      <h2>Appearance</h2>
+      <div class="stack" style="grid-auto-flow:column;justify-content:start" data-themes>
+        ${THEMES.map(([v, l]) => `<button class="chip" data-v="${v}">${l}</button>`).join('')}
+      </div>
+      <p class="muted mono" style="font-size:12px">Auto follows your device’s light/dark setting.</p>
       <h2>Sync</h2>
       <dl class="kv" data-sync></dl>
       <div class="stack" style="grid-auto-flow:column;justify-content:start">
@@ -107,6 +113,14 @@ export function settingsView(root) {
       <dt>Used</dt><dd>${est.usage != null ? mb(est.usage) : 'unknown'}</dd>
       <dt>Protected</dt><dd>${persisted === true ? 'Yes — the system won’t clear it' : persisted === false ? 'Not yet (install to the home screen)' : 'unknown'}</dd>`;
   }
+  const markTheme = () => {
+    for (const b of page.querySelectorAll('[data-themes] .chip')) b.classList.toggle('on', b.dataset.v === getTheme());
+  };
+  page.querySelector('[data-themes]').addEventListener('click', e => {
+    const b = e.target.closest('[data-v]');
+    if (b) { setTheme(b.dataset.v); markTheme(); }
+  });
+  markTheme();
   page.querySelector('[data-now]').onclick = () => { sync({ force: true }); toast('Syncing…'); };
   page.querySelector('[data-signout]').onclick = async () => {
     const ok = await confirmSheet({

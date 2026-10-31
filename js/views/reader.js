@@ -5,6 +5,7 @@ import { describe, paint } from '../highlight.js';
 import { enqueue } from '../outbox.js';
 import { kv } from '../db.js';
 import { openViewer } from '../viewer.js';
+import { THEMES, getTheme, setTheme } from '../theme.js';
 import { fetchItemNow } from '../sync.js';
 import { config } from '../config.js';
 import { on } from '../events.js';
@@ -23,7 +24,7 @@ export function readerView(root, { id, back = '#/' }) {
       <header class="bar">
         <a class="icon-btn" href="${esc(back)}" aria-label="Back to library">${icons.back}</a>
         <span class="spacer"></span>
-        <button class="label" data-size aria-label="Text size">Aa</button>
+        <button class="label" data-size aria-label="Text size and appearance">Aa</button>
         <button class="label hidden" data-pages>Pages</button>
         <button class="label" data-archive>Archive</button>
         <button class="icon-btn" data-more aria-label="More">${icons.more}</button>
@@ -112,12 +113,7 @@ export function readerView(root, { id, back = '#/' }) {
   page.addEventListener('click', onTapTop);
 
   // ---------- controls ----------
-  page.querySelector('[data-size]').onclick = () => {
-    const next = SIZES[(SIZES.indexOf(config.textSize) + 1) % SIZES.length];
-    config.textSize = next;
-    page.classList.remove('size-s', 'size-m', 'size-l');
-    page.classList.add(`size-${next}`);
-  };
+  page.querySelector('[data-size]').onclick = () => displaySheet(page);
   const toggleArchive = async () => {
     if (!item) return;
     const status = item.status === 'archived' ? 'unread' : 'archived';
@@ -190,6 +186,40 @@ export function readerView(root, { id, back = '#/' }) {
     releaseImages();
     document.title = 'Offline Reader';
   };
+}
+
+// ---------- text size & appearance ----------
+
+function displaySheet(page) {
+  const labels = { s: 'Small', m: 'Medium', l: 'Large' };
+  const s = sheet(`
+    <h2>Display</h2>
+    <div class="label">Text size</div>
+    <div class="seg" data-sizes>${SIZES.map(z => `<button class="chip" data-v="${z}">${labels[z]}</button>`).join('')}</div>
+    <div class="label">Appearance</div>
+    <div class="seg" data-themes>${THEMES.map(([v, l]) => `<button class="chip" data-v="${v}">${l}</button>`).join('')}</div>
+    <p class="note">Auto follows your device’s light/dark setting.</p>
+    <div class="buttons"><button class="btn" data-close>Done</button></div>`);
+  const mark = () => {
+    for (const b of s.root.querySelectorAll('[data-sizes] .chip')) b.classList.toggle('on', b.dataset.v === config.textSize);
+    for (const b of s.root.querySelectorAll('[data-themes] .chip')) b.classList.toggle('on', b.dataset.v === getTheme());
+  };
+  s.root.querySelector('[data-sizes]').addEventListener('click', e => {
+    const b = e.target.closest('[data-v]');
+    if (!b) return;
+    config.textSize = b.dataset.v;
+    page.classList.remove('size-s', 'size-m', 'size-l');
+    page.classList.add(`size-${b.dataset.v}`);
+    mark();
+  });
+  s.root.querySelector('[data-themes]').addEventListener('click', e => {
+    const b = e.target.closest('[data-v]');
+    if (!b) return;
+    setTheme(b.dataset.v);
+    mark();
+  });
+  s.root.querySelector('[data-close]').onclick = () => s.close();
+  mark();
 }
 
 // ---------- clip sheet ----------

@@ -4,6 +4,7 @@ import { sync, status as syncStatus } from './sync.js';
 import { flush } from './outbox.js';
 import { on } from './events.js';
 import { toast } from './ui.js';
+import { applyTheme } from './theme.js';
 import { libraryView, addSheet, normaliseUrl } from './views/library.js';
 import { readerView, pagesView } from './views/reader.js';
 import { themesView, themeView } from './views/themes.js';
@@ -81,6 +82,7 @@ if (navigator.storage && navigator.storage.persist && config.configured) {
   navigator.storage.persisted().then(p => p || navigator.storage.persist()).catch(() => {});
 }
 
+applyTheme();
 route();
 handleAddParam();
 if (config.configured) autoSync(true);

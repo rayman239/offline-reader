@@ -31,22 +31,23 @@
   color-scheme: light dark;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #161616;
-    --fg: #d6d6d2;
-    --muted: #7d7d78;
-    --faint: #4a4a46;
-    --line: #262624;
-    --panel: #1e1e1d;
-    --accent: #2aa8ec;
-    --mark: rgba(42, 168, 236, 0.24);
-    --mark-line: rgba(42, 168, 236, 0.6);
-    --danger: #e0664f;
-    --shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
-  }
-  .content img { filter: brightness(0.92); }
+/* Dark: set by js/theme.js (Auto follows the device; Light/Dark are fixed choices). */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #161616;
+  --fg: #d6d6d2;
+  --muted: #7d7d78;
+  --faint: #4a4a46;
+  --line: #262624;
+  --panel: #1e1e1d;
+  --accent: #2aa8ec;
+  --mark: rgba(42, 168, 236, 0.24);
+  --mark-line: rgba(42, 168, 236, 0.6);
+  --danger: #e0664f;
+  --shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
 }
+:root[data-theme="light"] { color-scheme: light; }
+:root[data-theme="dark"] .content img { filter: brightness(0.92); }
 
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
@@ -310,6 +311,7 @@ textarea.field { min-height: 84px; resize: vertical; line-height: 1.45; font-fam
 .sheet .note { font-family: var(--mono); font-size: 11.5px; color: var(--muted); margin: 10px 0 0; line-height: 1.5; }
 .sheet .hl-themes { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
 .sheet .thought { margin: 12px 0 0; font-size: 15.5px; }
+.sheet .seg { display: flex; gap: 8px; flex-wrap: wrap; }
 .sheet .divider { text-align: center; font-family: var(--mono); font-size: 11.5px; color: var(--muted); margin: 18px 0; }
 
 .toast {
