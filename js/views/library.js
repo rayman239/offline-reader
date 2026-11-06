@@ -48,7 +48,8 @@ export function libraryView(root, { tab }) {
     page.querySelector('[data-tab="unread"] .count').textContent = unreadCount ? ` ${unreadCount}` : '';
 
     let shown = items.filter(i => (tab === 'archive' ? i.status === 'archived' : i.status !== 'archived'));
-    const tags = [...new Set(shown.flatMap(i => i.tags))].sort((a, b) => a.localeCompare(b));
+    // The theme filter bar only shows on Archive; Unread stays uncluttered.
+    const tags = tab === 'archive' ? [...new Set(shown.flatMap(i => i.tags))].sort((a, b) => a.localeCompare(b)) : [];
     if (state.tag && !tags.includes(state.tag)) state.tag = null;
     tagbar.innerHTML = tags.map(t => `<button class="tag ${t === state.tag ? 'on' : ''}" data-tag="${esc(t)}">${esc(t)}</button>`).join('');
     tagbar.classList.toggle('hidden', !tags.length);
