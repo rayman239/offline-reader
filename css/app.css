@@ -134,10 +134,10 @@ button { background: none; border: 0; padding: 0; cursor: pointer; }
 .row .row-actions { display: flex; gap: 14px; margin-top: 8px; font-family: var(--mono); font-size: 12px; }
 .row .row-actions button { color: var(--fg); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--faint); }
 
-/* Swipe a row right to reveal Archive / Delete (js/swipe.js) */
+/* Swipe a row left to reveal Delete / Archive (js/swipe.js) */
 .list li.swipe { position: relative; overflow: hidden; }
 .swipe .row { position: relative; background: var(--bg); touch-action: pan-y; transition: transform 0.22s ease; -webkit-user-select: none; user-select: none; }
-.swipe-actions { position: absolute; top: 0; bottom: 0; left: 0; width: 0; display: flex; overflow: hidden; transition: width 0.22s ease; }
+.swipe-actions { position: absolute; top: 0; bottom: 0; right: 0; width: 0; display: flex; overflow: hidden; transition: width 0.22s ease; }
 .swipe-actions button { flex: 1 1 0; min-width: 0; overflow: hidden; white-space: nowrap; font-family: var(--mono); font-size: 12.5px; color: #fff; background: var(--accent); transition: flex-grow 0.18s ease; }
 .swipe-actions [data-act="delete"] { background: var(--danger); }
 .swipe.full .swipe-actions [data-act="delete"] { flex-grow: 0; }

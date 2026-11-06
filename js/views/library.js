@@ -125,7 +125,7 @@ export function libraryView(root, { tab }) {
     }
   });
 
-  // Swipe a row right: Archive (or Unread) and Delete. A long swipe archives straight away.
+  // Swipe a row left: Delete and Archive (or Unread). A long swipe archives straight away.
   const offSwipe = swipeRows(list, async (act, id) => {
     if (act === 'delete') {
       const ok = await confirmSheet({
@@ -165,7 +165,7 @@ function itemRow(i, tab) {
   const meta = `<span>${esc(facts)}</span>` + i.tags.map(t => `<span class="t">${esc(t)}</span>`).join('');
   const first = tab === 'archive' ? '<button data-act="unread" tabindex="-1">Unread</button>' : '<button data-act="archive" tabindex="-1">Archive</button>';
   return `<li class="swipe" data-id="${esc(i.id)}">
-    <div class="swipe-actions">${first}<button data-act="delete" tabindex="-1">Delete</button></div>
+    <div class="swipe-actions"><button data-act="delete" tabindex="-1">Delete</button>${first}</div>
     <a class="row" href="#/read/${encodeURIComponent(i.id)}"><div class="title">${esc(i.title)}</div><div class="meta">${meta}</div></a></li>`;
 }
 

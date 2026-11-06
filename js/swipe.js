@@ -1,5 +1,5 @@
-// Swipe a list row to the right to reveal its actions, like Mail on iPhone.
-// A short swipe leaves the buttons showing; a long swipe runs the first one (Archive).
+// Swipe a list row to the left to reveal its actions, like Mail on iPhone.
+// A short swipe leaves the buttons showing; a long swipe runs the edge one (Archive).
 // Touch only: on a laptop the rows behave as plain links.
 const OPEN = 168;   // width of the revealed buttons (two × 84px)
 const FULL = 0.55;  // fraction of the row width that counts as a long swipe
@@ -13,7 +13,7 @@ export function swipeRows(list, onAction) {
     const row = li.querySelector('.row');
     const acts = li.querySelector('.swipe-actions');
     row.style.transition = acts.style.transition = animate ? '' : 'none';
-    row.style.transform = x ? `translateX(${x}px)` : '';
+    row.style.transform = x ? `translateX(${-x}px)` : '';
     acts.style.width = `${x}px`;
     li.classList.toggle('full', x > OPEN * 1.4);
   }
@@ -42,10 +42,10 @@ export function swipeRows(list, onAction) {
     const dy = e.clientY - g.y0;
     if (!g.dir) {
       if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
-      g.dir = Math.abs(dx) > Math.abs(dy) && (dx > 0 || g.base) ? 'x' : 'y';
+      g.dir = Math.abs(dx) > Math.abs(dy) && (dx < 0 || g.base) ? 'x' : 'y';
       if (g.dir === 'y') { g = null; return; }
     }
-    g.x = Math.max(0, g.base + dx);
+    g.x = Math.max(0, g.base - dx);
     setX(g.li, g.x, false);
   }
   function up(e) {
@@ -55,7 +55,7 @@ export function swipeRows(list, onAction) {
     if (!dir) { if (li === open) { close(); swallowClick = true; } return; }
     swallowClick = true;
     const w = li.offsetWidth;
-    if (x > w * FULL) { setX(li, w); open = null; run(li, li.querySelector('[data-act]').dataset.act); }
+    if (x > w * FULL) { setX(li, w); open = null; run(li, li.querySelector('[data-act]:not([data-act="delete"])').dataset.act); }
     else if (x > OPEN / 2) { setX(li, OPEN); open = li; }
     else close(li);
   }
