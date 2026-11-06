@@ -5,6 +5,7 @@ import { LIBRARY } from '../config.js';
 import { enqueue } from '../outbox.js';
 import { status as syncStatus, sync } from '../sync.js';
 import { on } from '../events.js';
+import { swipeRows } from '../swipe.js';
 import { esc, el, icons, sheet, toast, confirmSheet, readingTime, shortDate, ago } from '../ui.js';
 
 let bodies = null; // id -> lowercase article text, loaded on first search
@@ -75,7 +76,7 @@ export function libraryView(root, { tab }) {
           <div class="meta"><span>${esc(p.error ? `Retrying — ${p.error}` : p.detail)}</span></div></li>`);
       }
     }
-    for (const i of shown) rows.push(i.status === 'failed' ? failedRow(i) : itemRow(i));
+    for (const i of shown) rows.push(i.status === 'failed' ? failedRow(i) : itemRow(i, tab));
     if (!rows.length) {
       list.innerHTML = `<li class="empty">${emptyText(tab, q, items.length)}</li>`;
     } else {
@@ -124,7 +125,26 @@ export function libraryView(root, { tab }) {
     }
   });
 
+  // Swipe a row right: Archive (or Unread) and Delete. A long swipe archives straight away.
+  const offSwipe = swipeRows(list, async (act, id) => {
+    if (act === 'delete') {
+      const ok = await confirmSheet({
+        title: 'Delete this item?',
+        body: 'It will be removed from every device. Clips already in your theme files are kept.',
+        confirm: 'Delete', danger: true,
+      });
+      if (!ok) return false;
+      await enqueue({ type: 'deleteItem', itemId: id });
+      toast('Deleted');
+    } else {
+      const status = act === 'archive' ? 'archived' : 'unread';
+      await enqueue({ type: 'state', itemId: id, status });
+      toast(status === 'archived' ? 'Archived' : 'Moved to Unread');
+    }
+  });
+
   const offs = [
+    offSwipe,
     on('synced', () => { bodies = null; render(); }),
     on('outbox', render),
     on('queued', render),
@@ -135,7 +155,7 @@ export function libraryView(root, { tab }) {
   return () => { offs.forEach(f => f()); clearInterval(tickTimer); };
 }
 
-function itemRow(i) {
+function itemRow(i, tab) {
   const facts = [
     i.site || hostOf(i.source),
     i.type === 'pdf' ? 'PDF' : '',
@@ -143,7 +163,10 @@ function itemRow(i) {
     shortDate(i.saved),
   ].filter(Boolean).join(', ');
   const meta = `<span>${esc(facts)}</span>` + i.tags.map(t => `<span class="t">${esc(t)}</span>`).join('');
-  return `<li><a class="row" href="#/read/${encodeURIComponent(i.id)}"><div class="title">${esc(i.title)}</div><div class="meta">${meta}</div></a></li>`;
+  const first = tab === 'archive' ? '<button data-act="unread" tabindex="-1">Unread</button>' : '<button data-act="archive" tabindex="-1">Archive</button>';
+  return `<li class="swipe" data-id="${esc(i.id)}">
+    <div class="swipe-actions">${first}<button data-act="delete" tabindex="-1">Delete</button></div>
+    <a class="row" href="#/read/${encodeURIComponent(i.id)}"><div class="title">${esc(i.title)}</div><div class="meta">${meta}</div></a></li>`;
 }
 
 function failedRow(i) {

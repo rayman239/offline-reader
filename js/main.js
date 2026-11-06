@@ -1,5 +1,5 @@
 // Boot, routing and sync scheduling.
-import { config } from './config.js';
+import { config, restorePrefs } from './config.js';
 import { sync, status as syncStatus } from './sync.js';
 import { flush } from './outbox.js';
 import { on } from './events.js';
@@ -83,7 +83,13 @@ if (navigator.storage && navigator.storage.persist && config.configured) {
 }
 
 applyTheme();
-route();
-handleAddParam();
-if (config.configured) autoSync(true);
+// Recover display choices localStorage may have lost (see restorePrefs), then draw.
+Promise.race([restorePrefs(), new Promise(r => setTimeout(r, 400))])
+  .catch(() => {})
+  .then(changed => {
+    if (changed) applyTheme();
+    route();
+    handleAddParam();
+    if (config.configured) autoSync(true);
+  });
 window.offlineReader = { sync, syncStatus }; // handy for debugging from the console

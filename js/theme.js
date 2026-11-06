@@ -1,5 +1,7 @@
 // Light / dark appearance: "auto" follows the device, or a fixed choice. Stored per device.
 // index.html applies the same logic inline before first paint, so there's no flash.
+import { writePref } from './config.js';
+
 const KEY = 'or.theme';
 const COLORS = { light: '#f8f2e3', dark: '#161616' };
 const media = window.matchMedia('(prefers-color-scheme: dark)');
@@ -11,7 +13,7 @@ export function getTheme() {
 }
 
 export function setTheme(choice) {
-  try { localStorage.setItem(KEY, choice); } catch { /* storage unavailable */ }
+  writePref(KEY, choice);
   applyTheme();
 }
 

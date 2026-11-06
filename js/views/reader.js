@@ -156,7 +156,11 @@ export function readerView(root, { id, back = '#/' }) {
     if (!lastAnchor || !item) return;
     const anchor = lastAnchor;
     fab.classList.remove('show');
-    clipSheet(item, anchor, () => load(false));
+    // Drop the live selection so iOS closes its Copy / Look Up / Translate menu, which otherwise
+    // swallows taps on the sheet. A provisional highlight keeps the passage visible meanwhile.
+    getSelection().removeAllRanges();
+    paint(content, [...item.highlights, { ...anchor, id: 'pending' }]);
+    clipSheet(item, anchor, () => load(false), () => paint(content, item.highlights));
   });
 
   // Tapping a highlight shows what it was clipped to; tapping an image opens it full screen.
@@ -224,7 +228,7 @@ function displaySheet(page) {
 
 // ---------- clip sheet ----------
 
-async function clipSheet(item, anchor, done) {
+async function clipSheet(item, anchor, done, onClose) {
   const themes = await loadThemes();
   const recent = (await kv.get('recentThemes')) || [];
   // Recently used themes first, then the rest alphabetically.
@@ -243,7 +247,7 @@ async function clipSheet(item, anchor, done) {
     <div class="buttons">
       <button class="btn" data-cancel>Cancel</button>
       <button class="btn primary" data-save disabled>Clip</button>
-    </div>`);
+    </div>`, { onClose });
   const chips = s.root.querySelector('.chips');
   const save = s.root.querySelector('[data-save]');
   const newInput = s.root.querySelector('[data-new]');
