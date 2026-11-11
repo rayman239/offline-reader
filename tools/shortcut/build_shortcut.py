@@ -133,6 +133,27 @@ otherwise = cond_else(g1)
 # (Apps share links in different shapes — a URL, a web page, or a sentence containing a link.)
 links = action("detect.link", WFInput=attach(INPUT))
 shared = action("detect.text", WFInput=attach(INPUT))
+# Fetch the page here on the phone and upload it too (queue/<Stamp>.page, before the link). Some
+# sites — Substack above all — refuse GitHub's servers but not you; the processor uses this copy
+# when it can't get the page itself.
+first = action("getitemfromlist", WFInput=attach(out(links, "URLs")), WFItemSpecifier="First Item")
+g3 = uid()
+if_url = cond_start(g3, out(first, "Item from List"), HAS_ANY_VALUE)
+page = action(
+    "downloadurl",
+    WFURL=text(out(first, "Item from List")),
+    WFHTTPMethod="GET",
+    ShowHeaders=True,
+    WFHTTPHeaders=dictionary([
+        ("User-Agent", "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 "
+                       "(KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1"),
+        ("Accept-Language", "en-GB,en;q=0.9"),
+    ]),
+)
+page_b64 = action("base64encode", WFInput=attach(out(page, "Contents of URL")), WFEncodeMode="Encode",
+                  WFBase64LineBreakMode="None")
+page_put = put(text(API, var("Stamp"), ".page"), "Save page", page_b64)
+url_end = cond_end(g3)
 body = action("gettext", WFTextActionText=text(out(links, "URLs"), "\n", out(shared, "Text")))
 link_b64 = action("base64encode", WFInput=attach(out(body, "Text")), WFEncodeMode="Encode", WFBase64LineBreakMode="None")
 link_put = put(text(API, var("Stamp"), ".txt"), "Save link", link_b64)
@@ -155,7 +176,8 @@ ok_end = cond_end(g2)
 
 actions = [token, if_empty, empty_note, stop, empty_end, set_token, stamp, set_stamp, ext,
            if_pdf, pdf_b64, pdf_name, pdf_name_enc, pdf_put,
-           otherwise, links, shared, body, link_b64, link_put, end_if,
+           otherwise, links, shared, first, if_url, page, page_b64, page_put, url_end,
+           body, link_b64, link_put, end_if,
            commit, err, ok_if, ok_note, ok_else, bad_note, ok_end]
 
 shortcut = {
