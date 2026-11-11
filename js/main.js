@@ -9,6 +9,7 @@ import { libraryView, addSheet, normaliseUrl } from './views/library.js';
 import { readerView, pagesView } from './views/reader.js';
 import { themesView, themeView } from './views/themes.js';
 import { setupView, settingsView } from './views/settings.js';
+import { feedsView } from './views/feeds.js';
 
 const root = document.getElementById('app');
 let teardown = null;
@@ -28,6 +29,8 @@ function route() {
   const param = arg ? decodeURIComponent(arg) : '';
   switch (section) {
     case '': lastList = '#/'; teardown = libraryView(root, { tab: 'unread' }); break;
+    case 'feed': lastList = '#/feed'; teardown = libraryView(root, { tab: 'feed' }); break;
+    case 'newsletters': teardown = feedsView(root); break;
     case 'archive': lastList = '#/archive'; teardown = libraryView(root, { tab: 'archive' }); break;
     case 'themes': teardown = param ? themeView(root, { name: param }) : themesView(root); break;
     case 'read': teardown = readerView(root, { id: param, back: lastList }); break;

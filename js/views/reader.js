@@ -71,6 +71,11 @@ export function readerView(root, { id, back = '#/' }) {
     page.querySelector('[data-archive]').textContent = archived ? 'Unarchive' : 'Archive';
     page.querySelector('[data-archive]').classList.toggle('on', archived);
     page.querySelector('[data-archive-end]').textContent = archived ? 'Move back to Unread' : 'Done — archive';
+    if (item.inFeed) { // a Feed post: Keep moves it to Unread for good
+      page.querySelector('[data-archive]').textContent = 'Keep';
+      page.querySelector('[data-archive]').classList.remove('on');
+      page.querySelector('[data-archive-end]').textContent = archived ? 'Mark as unread' : 'Done — mark read';
+    }
     if (item.type === 'pdf') {
       const n = await pageCount(item.id);
       page.querySelector('[data-pages]').classList.toggle('hidden', !n);
@@ -118,10 +123,17 @@ export function readerView(root, { id, back = '#/' }) {
     if (!item) return;
     const status = item.status === 'archived' ? 'unread' : 'archived';
     await enqueue({ type: 'state', itemId: item.id, status });
-    toast(status === 'archived' ? 'Archived' : 'Moved to Unread');
+    if (item.inFeed) toast(status === 'archived' ? 'Marked as read' : 'Marked as unread');
+    else toast(status === 'archived' ? 'Archived' : 'Moved to Unread');
     if (status === 'archived') setTimeout(() => { location.hash = back; }, 350);
+    else load(false);
   };
-  page.querySelector('[data-archive]').onclick = toggleArchive;
+  const keep = async () => {
+    await enqueue({ type: 'state', itemId: item.id, status: 'unread', kept: true });
+    toast('Kept — it’s in Unread now');
+    load(false);
+  };
+  page.querySelector('[data-archive]').onclick = () => (item && item.inFeed ? keep() : toggleArchive());
   page.querySelector('[data-archive-end]').onclick = toggleArchive;
   page.querySelector('[data-pages]').onclick = () => { location.hash = `#/pages/${encodeURIComponent(id)}`; };
   page.querySelector('[data-more]').onclick = () => moreSheet(item);

@@ -90,6 +90,7 @@ button { background: none; border: 0; padding: 0; cursor: pointer; }
 .tabs a { text-decoration: none; color: var(--muted); white-space: nowrap; padding: 6px 0; }
 .tabs a.active { color: var(--fg); }
 .tabs .count { color: var(--muted); margin-left: 4px; }
+@media (max-width: 430px) { .tabs { gap: 12px; } .tabs .count { margin-left: 2px; } .top .actions { gap: 0; } }
 .top .actions { display: flex; gap: 6px; align-items: center; }
 .icon-btn {
   width: 34px; height: 34px; display: inline-grid; place-items: center;
@@ -140,7 +141,24 @@ button { background: none; border: 0; padding: 0; cursor: pointer; }
 .swipe-actions { position: absolute; top: 0; bottom: 0; right: 0; width: 0; display: flex; overflow: hidden; transition: width 0.22s ease; }
 .swipe-actions button { flex: 1 1 0; min-width: 0; overflow: hidden; white-space: nowrap; font-family: var(--mono); font-size: 12.5px; color: #fff; background: var(--accent); transition: flex-grow 0.18s ease; }
 .swipe-actions [data-act="delete"] { background: var(--danger); }
-.swipe.full .swipe-actions [data-act="delete"] { flex-grow: 0; }
+.swipe.full .swipe-actions button:not(:last-child) { flex-grow: 0; }
+.swipe-actions [data-act="keep"] { background: var(--muted); }
+.row.read .title { color: var(--muted); }
+
+/* Feed tab and Newsletters page */
+.feedbar { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 14px; font-family: var(--mono); font-size: 12px; color: var(--muted); margin: -4px 0 8px; }
+.feedbar a { color: var(--fg); text-decoration: none; }
+.warn, .kv dd.warn { color: var(--danger); }
+.newsletters .intro { font-size: 15px; }
+.newsletters .follow { display: flex; gap: 10px; margin: 18px 0 6px; }
+.newsletters .follow .field { flex: 1; min-width: 0; }
+.newsletters .hint { font-size: 11.5px; margin: 0 0 8px; }
+.nl-list { list-style: none; margin: 0; padding: 0; }
+.nl { padding: 16px 0 18px; border-bottom: 1px solid var(--line); }
+.nl-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.nl-name { font-size: 18px; line-height: 1.35; overflow-wrap: anywhere; }
+.nl-head .link-btn { font-family: var(--mono); font-size: 12px; color: var(--muted); flex: none; }
+.nl-url { display: block; font-size: 12px; color: var(--muted); text-decoration: none; margin: 2px 0 10px; overflow-wrap: anywhere; }
 
 .empty { padding: 60px 0; text-align: center; color: var(--muted); }
 .empty p { margin: 0 0 6px; }

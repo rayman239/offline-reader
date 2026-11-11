@@ -35,6 +35,16 @@ export async function saveWebImage(url) {
   return false;
 }
 
+// Removes stored images that no item refers to any more (e.g. Feed posts past 30 days).
+export async function pruneWebImages(keep) {
+  const stored = await db.shasByRepo(REPO);
+  const gone = [...stored.keys()].filter(u => !keep.has(u));
+  if (gone.length) await db.delFiles(gone.map(u => fileKey(REPO, u)));
+  if (!('caches' in self)) return;
+  const cache = await caches.open(WEB_CACHE);
+  for (const req of await cache.keys()) if (!keep.has(req.url)) await cache.delete(req);
+}
+
 // Best source for an <img>: a stored copy, or the web address (served from the cache offline).
 export async function webImageSrc(url) {
   const f = await getFile(REPO, url);

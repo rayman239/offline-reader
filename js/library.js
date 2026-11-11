@@ -82,14 +82,17 @@ export async function loadItems() {
     const state = parseJson(recs[n * 2] && recs[n * 2].text, {});
     let highlights = parseJson(recs[n * 2 + 1] && recs[n * 2 + 1].text, []);
     let status = state.status || 'unread';
+    let kept = Boolean(state.kept);
     for (const op of ops) {
       if (op.itemId !== item.id) continue;
-      if (op.type === 'state') status = op.status;
+      if (op.type === 'state') { status = op.status; if (op.kept !== undefined) kept = op.kept; }
       else highlights = applyHighlightOp(highlights, op);
     }
+    // A Feed post stays in the Feed (and expires) until you keep it or highlight something in it.
+    const inFeed = Boolean(item.feed) && !kept && !highlights.length;
     const tags = [...new Set(highlights.flatMap(h => h.themes || []))].sort();
     const title = item.type === 'pdf' ? item.title : cleanTitle(item.title, item.site, item.source);
-    return { ...item, title, status, highlights, tags };
+    return { ...item, title, status, highlights, tags, kept, inFeed };
   });
   items.sort((a, b) => String(b.saved).localeCompare(String(a.saved)));
   return items;
@@ -126,6 +129,46 @@ export async function processing() {
     out.push({ label: name.endsWith('.pdf') ? name.replace(/^[\dT]+(-\w{4})?--/, '') : 'Link', detail: 'Processing…' });
   }
   return out;
+}
+
+// ---------- newsletters (Feed) ----------
+
+// Same as feedId() in the library processor (processor/feed.mjs).
+export function feedId(url) {
+  const u = new URL(url);
+  return `${u.hostname.replace(/^www\./, '')}${u.pathname.replace(/\/+$/, '')}`.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60);
+}
+
+// A newsletter's address from whatever was pasted: a site, a post, a feed, or a Substack profile.
+export function newsletterUrl(text) {
+  let t = (text || '').trim();
+  if (!t) return null;
+  if (!/^https?:\/\//i.test(t)) t = `https://${t}`;
+  let u;
+  try { u = new URL(t); } catch { return null; }
+  if (!/\./.test(u.hostname)) return null;
+  const host = u.hostname.toLowerCase();
+  // substack.com/@name, open.substack.com/pub/name/… → name.substack.com
+  const profile = /^\/@([\w-]+)/.exec(u.pathname) || (host === 'open.substack.com' && /^\/pub\/([\w-]+)/.exec(u.pathname));
+  if (/(^|\.)substack\.com$/.test(host) && profile) return `https://${profile[1].toLowerCase()}.substack.com`;
+  // A feed address is kept as it is; anything else becomes the site's home page.
+  if (/\/(feed|rss|atom)(\/|\.xml)?$|\.(xml|rss|atom)$/i.test(u.pathname)) return u.href;
+  return u.origin;
+}
+
+export const isSubstack = url => { try { return /(^|\.)substack\.com$/i.test(new URL(url).hostname); } catch { return false; } };
+
+export async function loadFeeds() {
+  const [f, s, m, ops] = await Promise.all([
+    getFile(LIBRARY, 'feeds.json'), getFile(LIBRARY, 'feed-status.json'), getFile(LIBRARY, 'feedcache/mac.json'), pending(),
+  ]);
+  let feeds = parseJson(f && f.text, {}).feeds || [];
+  for (const op of ops) {
+    if (op.type === 'feedAdd' && !feeds.some(x => x.id === op.feed.id)) feeds = [...feeds, { ...op.feed, pending: true }];
+    if (op.type === 'feedRemove') feeds = feeds.filter(x => x.id !== op.id);
+  }
+  const status = parseJson(s && s.text, {});
+  return { feeds, status: status.feeds || {}, updated: status.updated, mac: parseJson(m && m.text, null) };
 }
 
 export function hostOf(url) {

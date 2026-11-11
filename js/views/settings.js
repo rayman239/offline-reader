@@ -83,6 +83,8 @@ export function settingsView(root) {
       </div>
       <h2>Storage on this device</h2>
       <dl class="kv" data-storage></dl>
+      <h2>Newsletters</h2>
+      <p>The Feed fills itself from the newsletters you follow. <a href="#/newsletters">Review your newsletters</a>.</p>
       <h2>Saving from your iPhone</h2>
       <p>Use the <b>Save to Offline Reader</b> shortcut from the Share sheet in Safari, Arc, Mail or Files. <a href="https://github.com/${esc(config.owner)}/offline-reader/blob/main/docs/iphone-shortcut.md" target="_blank" rel="noopener">How to set it up</a>.</p>
       <h2>Install</h2>

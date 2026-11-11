@@ -1,5 +1,5 @@
-// Library: Unread / Archive lists, tag filter, search, and the "add" sheet.
-import { loadItems, processing, hostOf } from '../library.js';
+// Library: Unread / Feed / Archive lists, tag filter, search, and the "add" sheet.
+import { loadItems, loadFeeds, processing, hostOf } from '../library.js';
 import { db, fileKey } from '../db.js';
 import { LIBRARY } from '../config.js';
 import { enqueue } from '../outbox.js';
@@ -17,6 +17,7 @@ export function libraryView(root, { tab }) {
       <header class="top">
         <nav class="tabs">
           <a href="#/" data-tab="unread">Unread<span class="count"></span></a>
+          <a href="#/feed" data-tab="feed">Feed<span class="count"></span></a>
           <a href="#/archive" data-tab="archive">Archive</a>
           <a href="#/themes" data-tab="themes">Themes</a>
         </nav>
@@ -26,6 +27,7 @@ export function libraryView(root, { tab }) {
         </div>
       </header>
       <input class="search" type="search" placeholder="Search" autocomplete="off" enterkeyhint="search">
+      <div class="feedbar hidden"></div>
       <div class="tagbar"></div>
       <ul class="list"></ul>
       <div class="syncline"></div>
@@ -42,12 +44,24 @@ export function libraryView(root, { tab }) {
   let renderToken = 0;
   async function render() {
     const my = ++renderToken;
-    const [items, proc] = await Promise.all([loadItems(), processing()]);
+    const [items, proc, feedInfo] = await Promise.all([loadItems(), processing(), loadFeeds()]);
     if (my !== renderToken) return;
-    const unreadCount = items.filter(i => i.status !== 'archived').length;
+    const unreadCount = items.filter(i => !i.inFeed && i.status !== 'archived').length;
+    const feedCount = items.filter(i => i.inFeed && i.status !== 'archived').length;
     page.querySelector('[data-tab="unread"] .count').textContent = unreadCount ? ` ${unreadCount}` : '';
+    page.querySelector('[data-tab="feed"] .count').textContent = feedCount ? ` ${feedCount}` : '';
 
-    let shown = items.filter(i => (tab === 'archive' ? i.status === 'archived' : i.status !== 'archived'));
+    let shown = tab === 'feed'
+      ? items.filter(i => i.inFeed).sort((a, b) => String(b.published || b.saved).localeCompare(String(a.published || a.saved)))
+      : items.filter(i => !i.inFeed && (tab === 'archive' ? i.status === 'archived' : i.status !== 'archived'));
+    const feedbar = page.querySelector('.feedbar');
+    feedbar.classList.toggle('hidden', tab !== 'feed');
+    if (tab === 'feed') {
+      const n = feedInfo.feeds.length;
+      const problems = feedInfo.feeds.filter(f => feedInfo.status[f.id]?.error).length;
+      feedbar.innerHTML = `<a href="#/newsletters">${n ? `${n} newsletter${n === 1 ? '' : 's'}` : 'Follow a newsletter'}${problems ? ` · <span class="warn">${problems} with a problem</span>` : ''} ›</a>
+        <span>Posts leave after 30 days unless you keep them.</span>`;
+    }
     // The theme filter bar only shows on Archive; Unread stays uncluttered.
     const tags = tab === 'archive' ? [...new Set(shown.flatMap(i => i.tags))].sort((a, b) => a.localeCompare(b)) : [];
     if (state.tag && !tags.includes(state.tag)) state.tag = null;
@@ -56,6 +70,7 @@ export function libraryView(root, { tab }) {
     if (state.tag) shown = shown.filter(i => i.tags.includes(state.tag));
 
     const q = state.q.trim().toLowerCase();
+    if (q) shown = items; // search covers everything: Unread, Feed and Archive
     if (q) {
       if (!bodies) await loadBodies(items);
       const terms = q.split(/\s+/);
@@ -77,9 +92,9 @@ export function libraryView(root, { tab }) {
           <div class="meta"><span>${esc(p.error ? `Retrying — ${p.error}` : p.detail)}</span></div></li>`);
       }
     }
-    for (const i of shown) rows.push(i.status === 'failed' ? failedRow(i) : itemRow(i, tab));
+    for (const i of shown) rows.push(i.status === 'failed' ? failedRow(i) : i.inFeed ? feedRow(i) : itemRow(i, tab));
     if (!rows.length) {
-      list.innerHTML = `<li class="empty">${emptyText(tab, q, items.length)}</li>`;
+      list.innerHTML = `<li class="empty">${emptyText(tab, q, items.length, feedInfo.feeds.length)}</li>`;
     } else {
       list.innerHTML = rows.join('');
     }
@@ -127,8 +142,13 @@ export function libraryView(root, { tab }) {
   });
 
   // Swipe a row left: Delete and Archive (or Unread). A long swipe archives straight away.
+  // Feed rows: Keep and Read (or Unread); a long swipe marks the post read.
   const offSwipe = swipeRows(list, async (act, id) => {
-    if (act === 'delete') {
+    const inFeed = tab === 'feed' || Boolean(list.querySelector(`li[data-id="${CSS.escape(id)}"][data-feed]`));
+    if (act === 'keep') {
+      await enqueue({ type: 'state', itemId: id, status: 'unread', kept: true });
+      toast('Kept — it’s in Unread now');
+    } else if (act === 'delete') {
       const ok = await confirmSheet({
         title: 'Delete this item?',
         body: 'It will be removed from every device. Clips already in your theme files are kept.',
@@ -140,7 +160,7 @@ export function libraryView(root, { tab }) {
     } else {
       const status = act === 'archive' ? 'archived' : 'unread';
       await enqueue({ type: 'state', itemId: id, status });
-      toast(status === 'archived' ? 'Archived' : 'Moved to Unread');
+      toast(inFeed ? (status === 'archived' ? 'Marked as read' : 'Marked as unread') : status === 'archived' ? 'Archived' : 'Moved to Unread');
     }
   });
 
@@ -170,6 +190,23 @@ function itemRow(i, tab) {
     <a class="row" href="#/read/${encodeURIComponent(i.id)}"><div class="title">${esc(i.title)}</div><div class="meta">${meta}</div></a></li>`;
 }
 
+const DAY = 86400e3;
+
+function feedRow(i) {
+  const when = Date.parse(i.published || i.saved);
+  const left = Math.ceil((when + 30 * DAY - Date.now()) / DAY);
+  const facts = [
+    i.feedName || i.site || hostOf(i.source),
+    i.words ? readingTime(i.words) : '',
+    shortDate(i.published || i.saved),
+  ].filter(Boolean).join(', ');
+  const expiry = left <= 5 ? `<span class="t">${left <= 1 ? 'leaves today' : `${left} days left`}</span>` : '';
+  const read = i.status === 'archived';
+  return `<li class="swipe" data-id="${esc(i.id)}" data-feed>
+    <div class="swipe-actions"><button data-act="keep" tabindex="-1">Keep</button><button data-act="${read ? 'unread' : 'archive'}" tabindex="-1">${read ? 'Unread' : 'Read'}</button></div>
+    <a class="row${read ? ' read' : ''}" href="#/read/${encodeURIComponent(i.id)}"><div class="title">${esc(i.title)}</div><div class="meta"><span>${esc(facts)}</span>${expiry}</div></a></li>`;
+}
+
 function failedRow(i) {
   return `<li class="row failed"><div class="title">${esc(i.source || i.title)}</div>
     <div class="meta"><span>${esc(i.error || 'Couldn\'t save this.')}</span></div>
@@ -180,8 +217,13 @@ function failedRow(i) {
     </div></li>`;
 }
 
-function emptyText(tab, q, total) {
+function emptyText(tab, q, total, feeds) {
   if (q) return '<p>Nothing matches.</p>';
+  if (tab === 'feed') {
+    return feeds
+      ? '<p>No new posts in the last 30 days.</p><p class="mono">New posts appear here as your newsletters publish them.</p>'
+      : '<p>Your Feed is empty.</p><p class="mono"><a href="#/newsletters">Follow a newsletter</a> and its new posts will appear here.</p>';
+  }
   if (tab === 'archive') return '<p>Nothing archived yet.</p><p class="mono">Finished items go here.</p>';
   if (!total) return '<p>Your reading list is empty.</p><p class="mono">Tap + to save a link or a PDF.</p>';
   return '<p>All read.</p>';

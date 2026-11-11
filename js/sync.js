@@ -5,14 +5,16 @@ import { db, kv, fileKey } from './db.js';
 import { gh, config, LIBRARY, VAULT } from './config.js';
 import { flush, parseJson } from './outbox.js';
 import { emit } from './events.js';
-import { saveWebImage, webImageUrls } from './webimages.js';
+import { saveWebImage, webImageUrls, pruneWebImages } from './webimages.js';
 
 const TEXT_RE = /\.(md|json|txt)$/i;
 const TEXT_BATCH = 40;
 const BINARY_CONCURRENCY = 4;
 
+const FEED_FILES = new Set(['feeds.json', 'feed-status.json', 'feedcache/mac.json']);
+
 function wantLibrary(path) {
-  if (path === 'index.json') return true;
+  if (path === 'index.json' || FEED_FILES.has(path)) return true;
   if (!path.startsWith('items/')) return false;
   return !path.endsWith('/original.pdf'); // page images cover "view original"
 }
@@ -22,7 +24,7 @@ function wantVault(path) {
 }
 
 function priority(repo, path) {
-  if (path === 'index.json') return 0;
+  if (path === 'index.json' || FEED_FILES.has(path)) return 0;
   if (repo === VAULT) return 1;
   if (path.endsWith('/state.json') || path.endsWith('/highlights.json')) return 2;
   if (path.endsWith('/article.md')) return 3;
@@ -115,9 +117,11 @@ async function plan(repo, want, force) {
 async function saveWebImages() {
   const idx = parseJson((await db.get('files', fileKey(LIBRARY, 'index.json')))?.text, { items: [] });
   const ids = idx.items.filter(i => i.remoteImages > 0).map(i => i.id);
-  if (!ids.length) return;
   const recs = await db.getMany('files', ids.map(id => fileKey(LIBRARY, `items/${id}/article.md`)));
   const urls = [...new Set(recs.filter(Boolean).flatMap(r => webImageUrls(r.text)))];
+  // Feed posts come and go: drop images no remaining item uses.
+  if (ids.length === recs.filter(Boolean).length) await pruneWebImages(new Set(urls));
+  if (!urls.length) return;
   let saved = 0;
   for (const u of urls) if (await saveWebImage(u)) saved++;
   if (saved) emit('images-updated');

@@ -1,5 +1,5 @@
 // Swipe a list row to the left to reveal its actions, like Mail on iPhone.
-// A short swipe leaves the buttons showing; a long swipe runs the edge one (Archive).
+// A short swipe leaves the buttons showing; a long swipe runs the edge one (Archive, or Read in the Feed).
 // Touch only: on a laptop the rows behave as plain links.
 const OPEN = 168;   // width of the revealed buttons (two × 84px)
 const FULL = 0.55;  // fraction of the row width that counts as a long swipe
@@ -55,7 +55,7 @@ export function swipeRows(list, onAction) {
     if (!dir) { if (li === open) { close(); swallowClick = true; } return; }
     swallowClick = true;
     const w = li.offsetWidth;
-    if (x > w * FULL) { setX(li, w); open = null; run(li, li.querySelector('[data-act]:not([data-act="delete"])').dataset.act); }
+    if (x > w * FULL) { setX(li, w); open = null; run(li, [...li.querySelectorAll('[data-act]')].pop().dataset.act); }
     else if (x > OPEN / 2) { setX(li, OPEN); open = li; }
     else close(li);
   }

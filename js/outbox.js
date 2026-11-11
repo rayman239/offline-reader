@@ -99,8 +99,29 @@ function stamp() {
 const handlers = {
   async state(op) {
     await update(LIBRARY, `items/${op.itemId}/state.json`,
-      () => JSON.stringify({ status: op.status, updated: new Date(op.created).toISOString() }, null, 2) + '\n',
-      `${op.status === 'archived' ? 'Archive' : 'Unarchive'} ${op.itemId}`);
+      text => {
+        const prev = parseJson(text, {});
+        const kept = op.kept !== undefined ? op.kept : prev.kept;
+        return JSON.stringify({ status: op.status, ...(kept ? { kept: true } : {}), updated: new Date(op.created).toISOString() }, null, 2) + '\n';
+      },
+      `${op.kept ? 'Keep' : op.status === 'archived' ? 'Archive' : 'Unarchive'} ${op.itemId}`);
+  },
+
+  async feedAdd(op) {
+    await update(LIBRARY, 'feeds.json', text => {
+      const d = parseJson(text, {});
+      const feeds = d.feeds || [];
+      if (feeds.some(f => f.id === op.feed.id)) return null;
+      return JSON.stringify({ ...d, feeds: [...feeds, op.feed] }, null, 1) + '\n';
+    }, `Follow ${op.feed.url}`);
+  },
+
+  async feedRemove(op) {
+    await update(LIBRARY, 'feeds.json', text => {
+      const d = parseJson(text, {});
+      const feeds = (d.feeds || []).filter(f => f.id !== op.id);
+      return feeds.length === (d.feeds || []).length ? null : JSON.stringify({ ...d, feeds }, null, 1) + '\n';
+    }, `Unfollow ${op.id}`);
   },
 
   async hlAdd(op) {
