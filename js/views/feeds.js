@@ -3,7 +3,7 @@ import { loadFeeds, loadItems, feedId, newsletterUrl, isSubstack, hostOf } from 
 import { enqueue } from '../outbox.js';
 import { sync } from '../sync.js';
 import { on } from '../events.js';
-import { esc, el, icons, toast, confirmSheet, shortDate, ago } from '../ui.js';
+import { esc, el, icons, toast, confirmSheet, ago } from '../ui.js';
 
 const DAY = 86400e3;
 
@@ -78,31 +78,14 @@ export function feedsView(root) {
   return () => offs.forEach(f => f());
 }
 
+// Just the name (and Unfollow). Only something that needs attention gets a line below it.
 function row(f, st, posts, mac) {
   const name = st?.name || hostOf(f.url);
-  const inFeed = posts.filter(i => i.inFeed);
-  const unread = inFeed.filter(i => i.status !== 'archived').length;
-  const newest = posts.map(i => i.published || i.saved).sort().pop();
-  const facts = [];
-  if (f.pending || !st) {
-    facts.push(['Status', 'Waiting for the first check — usually a few minutes']);
-  } else {
-    facts.push(['In Feed', inFeed.length ? `${inFeed.length} post${inFeed.length === 1 ? '' : 's'}${unread ? `, ${unread} unread` : ''}` : 'none']);
-    facts.push(['Latest post', newest ? shortDate(newest) : 'none in the last 30 days']);
-    facts.push(['Checked', st.checked ? ago(Date.parse(st.checked)) : 'not yet']);
-    if (st.via === 'mac') {
-      const macErr = mac?.feeds?.[f.id] && !mac.feeds[f.id].ok ? mac.feeds[f.id].error : null;
-      facts.push(['Fetched by', 'your Mac (Substack blocks GitHub)']);
-      if (macErr) facts.push(['Mac problem', macErr, 'warn']);
-    }
-    if (st.skipped) facts.push(['Skipped', `${st.skipped} subscriber-only post${st.skipped === 1 ? '' : 's'}`]);
-    if (st.waiting) facts.push(['Status', st.waiting]);
-    if (st.error) facts.push(['Problem', st.error, 'warn']);
-  }
+  const macErr = st?.via === 'mac' && mac?.feeds?.[f.id] && !mac.feeds[f.id].ok ? mac.feeds[f.id].error : null;
+  const problem = st?.error || macErr;
   return `<li class="nl">
     <div class="nl-head"><span class="nl-name">${esc(name)}</span>
       <button class="link-btn" data-unfollow="${esc(f.id)}" data-name="${esc(name)}">Unfollow</button></div>
-    <a class="nl-url mono" href="${esc(f.url)}" target="_blank" rel="noopener">${esc(f.url.replace(/^https?:\/\//, ''))}</a>
-    <dl class="kv">${facts.map(([k, v, cls]) => `<dt>${esc(k)}</dt><dd${cls ? ` class="${cls}"` : ''}>${esc(v)}</dd>`).join('')}</dl>
+    ${problem ? `<p class="warn mono">${esc(problem)}</p>` : ''}
   </li>`;
 }

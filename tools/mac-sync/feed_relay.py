@@ -1,5 +1,9 @@
 #!/usr/bin/python3
-"""Offline Reader — fetches substack.com newsletter feeds for the Feed tab.
+"""Offline Reader — fetches what GitHub's servers can't, over your own connection.
+
+1. Saves that failed because the site refused GitHub (Substack, above all): fetches the page
+   here and re-queues it with that copy (queue/<stamp>.page + .json), once per link.
+2. substack.com newsletter feeds for the Feed tab (below).
 
 Substack refuses GitHub's servers, so this Mac fetches those feeds over your own connection
 and uploads them to feedcache/<id>.xml in the library repo, which starts the processing Action.
@@ -75,6 +79,68 @@ def fetch(url):
         return r.read()
 
 
+def github_raw(path):
+    """A file's contents (works past the 1 MB limit of the JSON contents API)."""
+    req = urllib.request.Request(API + path, headers={
+        "Authorization": f"Bearer {token()}", "Accept": "application/vnd.github.raw",
+        "X-GitHub-Api-Version": "2022-11-28", "User-Agent": "offline-reader-feed-relay",
+    })
+    try:
+        with urllib.request.urlopen(req, timeout=60) as r:
+            return r.read()
+    except urllib.error.HTTPError as e:
+        if e.code == 404:
+            return None
+        raise
+
+
+# Failures that mean "the site refused GitHub's servers", which a home connection usually gets past.
+BLOCKED = re.compile(r"blocks automated access|HTTP (401|403|429|503)|took too long|timed out", re.I)
+RESCUE_PER_RUN = 5
+
+
+def fetch_page(url):
+    req = urllib.request.Request(url, headers={
+        "User-Agent": UA, "Accept": "text/html,application/xhtml+xml,*/*;q=0.8", "Accept-Language": "en-GB,en;q=0.9",
+    })
+    with urllib.request.urlopen(req, timeout=45) as r:
+        return r.read()
+
+
+def rescue_blocked(state):
+    """Re-queues failed saves whose site blocked GitHub, with the page as this Mac sees it."""
+    raw = github_raw("index.json?ref=main")
+    if not raw:
+        return
+    data = json.loads(raw)
+    items = data.get("items", []) if isinstance(data, dict) else data
+    tried = state.setdefault("rescued", {})  # source URL -> when; each link gets one go
+    done = 0
+    for it in items:
+        src = it.get("source") or ""
+        if it.get("status") != "failed" or not src.startswith("http") or not BLOCKED.search(it.get("error") or ""):
+            continue
+        if src in tried or done >= RESCUE_PER_RUN:
+            continue
+        tried[src] = time.time()
+        done += 1
+        try:
+            page = fetch_page(src)
+            if len(page) < 2000 or (b"<html" not in page[:5000].lower() and page[:5] != b"%PDF-"):
+                raise RuntimeError("the response wasn't a web page")
+            stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S") + f"-mac{done}"
+            # The page first: the .json starts processing, which looks for the matching .page.
+            put(f"queue/{stamp}.page", page, f"Page fetched on Mac: {src}")
+            job = {"url": src, "added": it.get("saved"), "replace": it.get("id")}
+            put(f"queue/{stamp}.json", json.dumps(job).encode(), f"Re-save {src} (fetched on Mac)")
+            log(f"rescued {src}")
+        except Exception as e:
+            log(f"couldn't rescue {src}: {e}")
+    # Forget links tried more than 30 days ago.
+    for src in [s for s, t in tried.items() if time.time() - t > 30 * 86400]:
+        del tried[src]
+
+
 def is_substack(url):
     return re.search(r"(^|\.)substack\.com$", re.sub(r"^https?://([^/]+).*$", r"\1", url).lower()) is not None
 
@@ -92,6 +158,12 @@ def main():
         return
     state = json.loads(STATE.read_text()) if STATE.exists() else {}
     state.setdefault("feeds", {})
+
+    try:
+        rescue_blocked(state)
+    except Exception as e:
+        log(f"rescue: {e}")
+    STATE.write_text(json.dumps(state))
 
     meta = github("GET", "feeds.json?ref=main")
     feeds = json.loads(base64.b64decode(meta["content"])).get("feeds", []) if meta else []

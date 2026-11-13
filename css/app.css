@@ -159,6 +159,7 @@ button { background: none; border: 0; padding: 0; cursor: pointer; }
 .nl-name { font-size: 18px; line-height: 1.35; overflow-wrap: anywhere; }
 .nl-head .link-btn { font-family: var(--mono); font-size: 12px; color: var(--muted); flex: none; }
 .nl-url { display: block; font-size: 12px; color: var(--muted); text-decoration: none; margin: 2px 0 10px; overflow-wrap: anywhere; }
+.nl .warn { font-size: 12px; margin: 6px 0 0; }
 
 .empty { padding: 60px 0; text-align: center; color: var(--muted); }
 .empty p { margin: 0 0 6px; }
